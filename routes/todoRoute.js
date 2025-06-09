@@ -1,7 +1,8 @@
 import express from "express";
 import { createTodo, deleteTodo, getAllTodos, updateTodo } from "../controllers/todolist.js";
+import { auth } from "../middleware/auth.js";
 
-const router = express.Router()
+const router = express.Router();
 
 /**
  * @openapi
@@ -16,7 +17,7 @@ const router = express.Router()
  *   get:
  *     tags:
  *       - Todo
- *     summary: Get all todo list from database (no auth)
+ *     summary: Get all todo list from database (need auth)
  *     responses:
  *       '200':
  *         description: Success
@@ -27,7 +28,7 @@ const router = express.Router()
  *       '500':
  *         description: Internal server error
  */
-router.get("/get_all", getAllTodos)
+router.get("/get_all", auth, getAllTodos);
 
 /**
  * @openapi
@@ -35,7 +36,7 @@ router.get("/get_all", getAllTodos)
  *   post:
  *     tags:
  *       - Todo
- *     summary: Add a new todo list (no auth)
+ *     summary: Add a new todo list (need auth)
  *     requestBody:
  *       required: true
  *       content:
@@ -65,7 +66,7 @@ router.get("/get_all", getAllTodos)
  *       '500':
  *         description: Internal server error
  */
-router.post("/add_todo", createTodo)
+router.post("/add_todo", auth, createTodo);
 
 /**
  * @openapi
@@ -73,7 +74,7 @@ router.post("/add_todo", createTodo)
  *   patch:
  *     tags:
  *       - Todo
- *     summary: Update todo list (no auth)
+ *     summary: Update todo list (need auth)
  *     parameters:
  *       - name: id
  *         in: path
@@ -110,7 +111,7 @@ router.post("/add_todo", createTodo)
  *       '500':
  *         description: Internal server error
  */
-router.patch("/update_todo/:id", updateTodo)
+router.patch("/update_todo/:id", auth, updateTodo);
 
 /**
  * @openapi
@@ -136,6 +137,6 @@ router.patch("/update_todo/:id", updateTodo)
  *       '500':
  *         description: Internal server error
  */
-router.delete("/delete_todo/:id", deleteTodo)
+router.delete("/delete_todo/:id", deleteTodo);
 
-export default router
+export default router;

@@ -1,8 +1,8 @@
 import express from 'express';
-import { signIn, signUp, userInfor } from '../controllers/users.js';
+import { signIn, signUp, userInfor, verifyOTP, updateUser, deleteUser } from '../controllers/users.js';
 import { auth } from '../middleware/auth.js';
 
-const router = express.Router()
+const router = express.Router();
 
 /**
  * @openapi
@@ -26,7 +26,7 @@ const router = express.Router()
  *       '500':
  *         description: Internal server error
  */
-router.get("/user-infor", auth, userInfor)
+router.get("/user-infor", auth, userInfor);
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get("/user-infor", auth, userInfor)
  *       '500':
  *         description: Internal server error
  */
-router.post("/signup", signUp)
+router.post("/signup", signUp);
 
 /**
  * @openapi
@@ -105,6 +105,100 @@ router.post("/signup", signUp)
  *       '500':
  *         description: Internal server error
  */
-router.post("/signin", signIn)
+router.post("/signin", signIn);
 
-export default router
+/**
+ * @openapi
+ * /verify_otp:
+ *   post:
+ *     tags:
+ *       - User
+ *     summary: Verify user email with OTP
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "juwono@gmail.com"
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
+ *     responses:
+ *       '200':
+ *         description: Email verified successfully
+ *       '400':
+ *         description: Invalid OTP or user not found
+ *       '500':
+ *         description: Internal server error
+ */
+router.post("/verify_otp", verifyOTP);
+
+/**
+ * @openapi
+ * /update/{id}:
+ *   patch:
+ *     tags:
+ *       - User
+ *     summary: Update user information (need auth)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: User ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Updated Name"
+ *               address:
+ *                 type: string
+ *                 example: "Updated Address"
+ *               phone_number:
+ *                 type: string
+ *                 example: "081234567890"
+ *     responses:
+ *       '200':
+ *         description: User updated
+ *       '404':
+ *         description: User not found
+ *       '500':
+ *         description: Internal server error
+ */
+router.patch("/update/:id", auth, updateUser);
+
+/**
+ * @openapi
+ * /delete/{id}:
+ *   delete:
+ *     tags:
+ *       - User
+ *     summary: Delete user (need auth)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: User ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: User deleted
+ *       '404':
+ *         description: User not found
+ *       '500':
+ *         description: Internal server error
+ */
+router.delete("/delete/:id", auth, deleteUser);
+
+export default router;

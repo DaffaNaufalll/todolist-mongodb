@@ -1,46 +1,38 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
-const userSchema = mongoose.Schema({
+const userSchema = new mongoose.Schema({
     personal_id: {
         type: String,
         required: true,
-        index: true
-    },
-    user_image: {
-        type: String,
-        default: "https://api.dicebear.com/9.x/big-ears-neutral/svg?seed=Alexander",
+        unique: true
     },
     name: {
         type: String,
         required: true,
-        trim: true,
-        index: true
+        minlength: 3
     },
     email: {
         type: String,
         required: true,
-        trim: true,
-        unique: true,
-        index: true
+        unique: true
     },
     password: {
         type: String,
         required: true
     },
     address: {
-        type: String,
-        default: ""
+        type: String
     },
     phone_number: {
-        type: String,
-        default: ""
+        type: String
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    otp: {
+        type: String
     }
-}, {
-    timestamps: {
-        createdAt: 'joinedAt'
-    }
-})
+}, { timestamps: true });
 
-userSchema.index({ "personal_id": 1, "email": 1 })
-
-export default mongoose.model("Users", userSchema)
+export default mongoose.model('Users', userSchema);
