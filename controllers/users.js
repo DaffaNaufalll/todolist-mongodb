@@ -1,7 +1,9 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Users from '../models/users.js';
-import nodemailer from 'nodemailer';
+import { userSendMail } from './userSendMail.js';
+
+const { DEFAULT_CLIENT_URL } = process.env;
 
 // check password and confirmPassword
 function isMatch(password, confirm_password) {
@@ -20,29 +22,17 @@ function validatePassword(password) {
     return re.test(password);
 }
 
+// create activation token
+function createActivationToken(payload) {
+    return jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '1d' });
+}
+
 // create refresh token
 function createRefreshToken(payload) {
     return jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '1d' });
 }
 
-// send OTP email
-async function sendOTP(email, otp) {
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-    await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Verify your email',
-        text: `Your OTP is: ${otp}`
-    });
-}
-
-// user sign-up
+// user sign-up (register & send activation email)
 export const signUp = async (req, res) => {
     try {
         const { personal_id, name, email, password, confirmPassword, address, phone_number } = req.body;
@@ -55,11 +45,11 @@ export const signUp = async (req, res) => {
 
         if (!isMatch(password, confirmPassword)) return res.status(400).json({ message: "Password did not match" });
 
-        if (!validateEmail(email)) return res.status(400).json({ message: "Invalid emails" });
+        if (!validateEmail(email)) return res.status(400).json({ message: "Invalid email" });
 
         if (!validatePassword(password)) {
             return res.status(400).json({
-                message: "Password should be 6 to 20 characters long with a numeric, 1 lowercase and 1 uppercase letters"
+                message: "Password should be 6 to 20 characters long with a numeric, 1 lowercase and 1 uppercase letter"
             });
         }
 
@@ -72,64 +62,69 @@ export const signUp = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Generate OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-        const newUser = new Users({
+        // Create activation token
+        const activation_token = createActivationToken({
             personal_id,
             name,
             email,
             password: hashedPassword,
             address,
-            phone_number,
-            otp,
-            isVerified: false
+            phone_number
+        });
+
+        const url = `${DEFAULT_CLIENT_URL}/user/activate/${activation_token}`;
+
+        await userSendMail(email, url, "Verify your email address", "Activate Account");
+
+        res.json({ message: "Register Success! Please check your email to activate your account." });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// email activation
+export const activateEmail = async (req, res) => {
+    try {
+        const { activation_token } = req.body;
+        const user = jwt.verify(activation_token, process.env.REFRESH_TOKEN_SECRET);
+
+        const { personal_id, name, email, password, address, phone_number } = user;
+
+        const existingUser = await Users.findOne({ email });
+
+        if (existingUser) {
+            return res.status(400).json({ message: "This email already exists." });
+        }
+
+        const newUser = new Users({
+            personal_id,
+            name,
+            email,
+            password,
+            address,
+            phone_number
         });
 
         await newUser.save();
-        await sendOTP(email, otp);
 
-        res.status(200).json({
-            message: "User registered successfully. Please check your email for the OTP to verify your account.",
-            user: {
-                id: newUser._id,
-                name: newUser.name,
-                email: newUser.email
-            }
-        });
+        res.json({ message: "Account has been activated. Please login now!" });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
-}
-
-// verify OTP
-export const verifyOTP = async (req, res) => {
-    try {
-        const { email, otp } = req.body;
-        const user = await Users.findOne({ email });
-        if (!user) return res.status(400).json({ message: "User not found" });
-        if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
-        user.isVerified = true;
-        user.otp = undefined;
-        await user.save();
-        res.json({ message: "Email verified successfully" });
-    } catch (error) {
-        return res.status(500).json({ message: error.message });
-    }
-}
+};
 
 // user sign-in
 export const signIn = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const user = await Users.findOne({ email });
-
         if (!email || !password) return res.status(400).json({ message: "Please fill in all fields" });
+
+        const user = await Users.findOne({ email });
 
         if (!user) return res.status(400).json({ message: "Invalid Credentials" });
 
-        if (!user.isVerified) return res.status(400).json({ message: "Please verify your email first" });
+        // No need to check isVerified, since only activated users are in the database
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid Credentials" });
@@ -145,8 +140,10 @@ export const signIn = async (req, res) => {
             expires: new Date(Date.now() + expiry)
         });
 
+        // Return the token in the response for frontend auth
         res.json({
             message: "Sign In successfully!",
+            token: refresh_token,
             user: {
                 id: user._id,
                 name: user.name,
@@ -157,19 +154,18 @@ export const signIn = async (req, res) => {
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
-}
+};
 
-// user information
+// get user info
 export const userInfor = async (req, res) => {
     try {
         const userId = req.user.id;
         const userInfor = await Users.findById(userId).select("-password");
-
         res.json(userInfor);
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
-}
+};
 
 // update user
 export const updateUser = async (req, res) => {

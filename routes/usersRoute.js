@@ -1,5 +1,5 @@
 import express from 'express';
-import { signIn, signUp, userInfor, verifyOTP, updateUser, deleteUser } from '../controllers/users.js';
+import { activateEmail, signIn, signUp, userInfor, updateUser, deleteUser } from '../controllers/users.js';
 import { auth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -77,6 +77,33 @@ router.post("/signup", signUp);
 
 /**
  * @openapi
+ * /activation:
+ *   post:
+ *     tags:
+ *       - User
+ *     summary: Activate user email
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               activation_token:
+ *                 type: string
+ *                 example: "your_activation_token"
+ *     responses:
+ *       '200':
+ *         description: Activation successful
+ *       '400':
+ *         description: Bad request
+ *       '500':
+ *         description: Internal server error
+ */
+router.post("/activation", activateEmail);
+
+/**
+ * @openapi
  * /signin:
  *   post:
  *     tags:
@@ -106,36 +133,6 @@ router.post("/signup", signUp);
  *         description: Internal server error
  */
 router.post("/signin", signIn);
-
-/**
- * @openapi
- * /verify_otp:
- *   post:
- *     tags:
- *       - User
- *     summary: Verify user email with OTP
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 example: "juwono@gmail.com"
- *               otp:
- *                 type: string
- *                 example: "123456"
- *     responses:
- *       '200':
- *         description: Email verified successfully
- *       '400':
- *         description: Invalid OTP or user not found
- *       '500':
- *         description: Internal server error
- */
-router.post("/verify_otp", verifyOTP);
 
 /**
  * @openapi
